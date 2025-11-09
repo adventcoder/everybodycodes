@@ -16,8 +16,17 @@ def main():
 
 def make_quest_group(mod):
     quest = detect_quest(mod)
-    group = click.Group()
-    for part, func in detect_parts(mod):
+    parts = detect_parts(mod)
+
+    @click.group(invoke_without_command=True)
+    @click.pass_context
+    def group(ctx: click.Context):
+        if ctx.invoked_subcommand is None:
+            for part, func in parts:
+                with open(default_notes_path.format(event, quest, part)) as file:
+                    click.echo(str(func(file.read())))
+
+    for part, func in parts:
         group.add_command(make_part_command(quest, part, func))
     return group
 
@@ -40,13 +49,11 @@ def detect_quest(mod):
     return int(m.group(1))
 
 def detect_parts(mod):
+    parts = []
     for name, func in inspect.getmembers(mod, inspect.isfunction):
         if m := re.match(r'p([0-9]+)', name):
-            yield int(m.group(1)), func
-
-def read_notes(path):
-    with open(path, 'r') as file:
-        return file.read()
+            parts.append((int(m.group(1)), func))
+    return parts
 
 def timed(func):
     @functools.wraps(func)

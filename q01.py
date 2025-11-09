@@ -1,5 +1,4 @@
-
-from cli import main
+import ec
 
 def p1(notes):
     names, steps = parse_notes(notes)
@@ -29,4 +28,4 @@ def parse_notes(notes):
     return names, steps
 
 if __name__ == "__main__":
-    main()
+    ec.main()

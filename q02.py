@@ -1,4 +1,4 @@
-from cli import main
+import ec
 from dataclasses import dataclass
 import multiprocessing as mp
 
@@ -51,12 +51,12 @@ def worker(A, B, step):
 
 def check(p):
     r = Complex(0, 0)
-    N = Complex(100000, 100000)
+    N = Complex(100_000, 100_000)
     for _ in range(100):
         r = r * r / N + p
-        if abs(r.x) > 1000000 or abs(r.y) > 10000000:
+        if abs(r.x) > 1_000_000 or abs(r.y) > 1_000_000:
             return False
     return True
 
 if __name__ == "__main__":
-    main()
+    ec.main()
