@@ -1,18 +1,20 @@
-import ec
+from ec import main
 from collections import Counter
 
 def p1(notes):
-    return sum(set(nums(notes)))
+    nums = parse(notes)
+    return sum(set(nums))
 
 def p2(notes):
-    return sum(sorted(set(nums(notes)))[:20])
+    nums = parse(notes)
+    return sum(sorted(set(nums))[:20])
 
 def p3(notes):
-    counts = Counter(nums(notes))
-    return max(counts.values())
+    nums = parse(notes)
+    return max(Counter(nums).values())
 
-def nums(notes):
-    return map(int, notes.split(','))
+def parse(notes):
+    return [int(s) for s in notes.split(',')]
 
 if __name__ == '__main__':
-    ec.main()
+    main()

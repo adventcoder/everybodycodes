@@ -1,4 +1,4 @@
-import ec
+from ec import main
 from dataclasses import dataclass
 import multiprocessing as mp
 
@@ -59,4 +59,4 @@ def check(p):
     return True
 
 if __name__ == "__main__":
-    ec.main()
+    main()

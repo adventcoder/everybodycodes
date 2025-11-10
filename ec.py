@@ -8,7 +8,6 @@ import functools
 import __main__
 
 event = 2025
-default_notes_path = 'notes/everybody_codes_e{}_q{:02d}_p{}.txt'
 
 def main():
     cli = make_quest_group(__main__)
@@ -22,9 +21,14 @@ def make_quest_group(mod):
     @click.pass_context
     def group(ctx: click.Context):
         if ctx.invoked_subcommand is None:
+            total_time = 0.0
             for part, func in parts:
-                with open(default_notes_path.format(event, quest, part)) as file:
-                    click.echo(str(func(file.read())))
+                answer, answer_time = timed(func)(get_notes(quest, part, ctx))
+                total_time += answer_time
+                click.echo(f'- Part {part}: {answer}')
+                click.echo(f'  Took {format_time(answer_time)}')
+                click.echo()
+            click.echo(f'Took in total {format_time(total_time)}')
 
     for part, func in parts:
         group.add_command(make_part_command(quest, part, func))
@@ -32,10 +36,15 @@ def make_quest_group(mod):
 
 def make_part_command(quest, part, func):
     @click.command()
-    @click.option('--notes', type=click.File('r'), default=default_notes_path.format(event, quest, part))
+    @click.option('--notes', 'notes_file', type=click.File('r'))
+    @click.pass_context
     @functools.wraps(func)
-    def new_func(notes, **params):
-        answer, answer_time = timed(func)(notes.read(), **params)
+    def new_func(ctx, notes_file, **params):
+        if notes_file is None:
+            notes = get_notes(quest, part, ctx)
+        else:
+            notes = notes_file.read()
+        answer, answer_time = timed(func)(notes, **params)
         click.echo(f'Answer: {answer}')
         click.echo()
         click.echo(f'Took {format_time(answer_time)}')
@@ -54,6 +63,13 @@ def detect_parts(mod):
         if m := re.match(r'p([0-9]+)', name):
             parts.append((int(m.group(1)), func))
     return parts
+
+def get_notes(quest, part, ctx):
+    path = f'notes/everybody_codes_e{event}_q{quest:02d}_p{part}.txt'
+    if not os.path.exists(path):
+        ctx.fail()
+    with open(path, 'r') as file:
+        return file.read()
 
 def timed(func):
     @functools.wraps(func)
