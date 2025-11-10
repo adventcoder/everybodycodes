@@ -21,14 +21,9 @@ def make_quest_group(mod):
     @click.pass_context
     def group(ctx: click.Context):
         if ctx.invoked_subcommand is None:
-            total_time = 0.0
             for part, func in parts:
-                answer, answer_time = timed(func)(get_notes(quest, part, ctx))
-                total_time += answer_time
-                click.echo(f'- Part {part}: {answer}')
-                click.echo(f'  Took {format_time(answer_time)}')
-                click.echo()
-            click.echo(f'Took in total {format_time(total_time)}')
+                answer = func(get_notes(quest, part, ctx))
+                click.echo(answer)
 
     for part, func in parts:
         group.add_command(make_part_command(quest, part, func))
@@ -52,7 +47,7 @@ def make_part_command(quest, part, func):
 
 def detect_quest(mod):
     name, _ = os.path.splitext(os.path.basename(inspect.getfile(mod)))
-    m = re.match(r'q([0-9]{2})', name)
+    m = re.fullmatch(r'q([0-9]{2})', name)
     if not m:
         raise ValueError(f"Could not determine quest number from filename: {mod.__file__}")
     return int(m.group(1))
@@ -60,8 +55,10 @@ def detect_quest(mod):
 def detect_parts(mod):
     parts = []
     for name, func in inspect.getmembers(mod, inspect.isfunction):
-        if m := re.match(r'p([0-9]+)', name):
-            parts.append((int(m.group(1)), func))
+        if m := re.fullmatch(r'p([0-9]+)', name):
+            part = int(m.group(1))
+            parts.append((part, func))
+    parts.sort(key=lambda pair: pair[0])
     return parts
 
 def get_notes(quest, part, ctx):
