@@ -16,15 +16,7 @@ def main():
 def make_quest_group(mod):
     quest = detect_quest(mod)
     parts = detect_parts(mod)
-
-    @click.group(invoke_without_command=True)
-    @click.pass_context
-    def group(ctx: click.Context):
-        if ctx.invoked_subcommand is None:
-            for part, func in parts:
-                answer, answer_time = timed(func)(get_notes(quest, part, ctx))
-                click.echo(f'{part}. {answer} [{format_time(answer_time)}]')
-
+    group = click.Group()
     for part, func in parts:
         group.add_command(make_part_command(quest, part, func))
     return group
@@ -40,9 +32,7 @@ def make_part_command(quest, part, func):
         else:
             notes = notes_file.read()
         answer, answer_time = timed(func)(notes, **params)
-        click.echo(f'Answer: {answer}')
-        click.echo()
-        click.echo(f'Took {format_time(answer_time)}')
+        click.echo(f'{part}. {answer} [{format_time(answer_time)}]')
     return new_func
 
 def detect_quest(mod):

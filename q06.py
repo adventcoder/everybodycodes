@@ -1,4 +1,6 @@
 from ec import main
+from math import ceil
+import click
 
 def p1(camp):
     count = 0
@@ -14,18 +16,23 @@ def p2(camp):
             count += camp[:i].count(c.upper())
     return count
 
-def p3(camp):
-    padded = camp * 3
-    n = len(camp)
-    return count(padded, 0, n) + 998 * count(padded, n, 2*n) + count(padded, 2*n, 3*n)
+@click.option('--reps', type=int, default='1000')
+@click.option('--distance', type=int, default='1000')
+def p3(camp, reps, distance):
+    pad = camp * ceil(distance / len(camp))
+    lcount = count('', camp, pad, distance)
+    mcount = count(pad, camp, pad, distance)
+    rcount = count(pad, camp, '', distance)
+    return lcount + (reps - 2) * mcount + rcount
 
-def count(camp, start, stop):
+def count(lpad, camp, rpad, distance):
+    padded = lpad + camp + rpad
     count = 0
-    for i in range(start, stop):
-        c = camp[i]
+    for i, c in enumerate(camp):
         if c.islower():
-            span = camp[max(i - 1001, 0) : min(i + 1001, len(camp))]
-            count += span.count(c.upper())
+            start = max(len(lpad) + i - distance, 0)
+            stop  = min(len(lpad) + i + distance + 1, len(padded))
+            count += padded[start : stop].count(c.upper())
     return count
 
 if __name__ == '__main__':
