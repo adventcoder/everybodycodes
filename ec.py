@@ -22,8 +22,8 @@ def make_quest_group(mod):
     def group(ctx: click.Context):
         if ctx.invoked_subcommand is None:
             for part, func in parts:
-                answer = func(get_notes(quest, part, ctx))
-                click.echo(answer)
+                answer, answer_time = timed(func)(get_notes(quest, part, ctx))
+                click.echo(f'{part}. {answer} [{format_time(answer_time)}]')
 
     for part, func in parts:
         group.add_command(make_part_command(quest, part, func))
