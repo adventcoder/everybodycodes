@@ -1,39 +1,71 @@
 from ec import main
 from math import ceil
+from collections import Counter
 import click
 
-def p1(camp):
+def p1(notes):
+    mentors = 0
     count = 0
-    for i, c in enumerate(camp):
+    for c in notes.strip():
         if c == 'a':
-            count += camp[:i].count(c.upper())
+            count += mentors
+        elif c == 'A':
+            mentors += 1
     return count
 
-def p2(camp):
+def p2(notes):
+    mentors = Counter()
     count = 0
-    for i, c in enumerate(camp):
+    for c in notes.strip():
         if c.islower():
-            count += camp[:i].count(c.upper())
+            count += mentors[c.upper()]
+        elif c.isupper():
+            mentors[c] += 1
     return count
 
-@click.option('--reps', type=int, default='1000')
+@click.option('--repeat', type=int, default='1000')
 @click.option('--distance', type=int, default='1000')
-def p3(camp, reps, distance):
-    pad = camp * ceil(distance / len(camp))
-    lcount = count('', camp, pad, distance)
-    mcount = count(pad, camp, pad, distance)
-    rcount = count(pad, camp, '', distance)
-    return lcount + (reps - 2) * mcount + rcount
+def p3(notes, repeat, distance):
+    segment = notes.strip()
+    n = ceil(distance / len(segment))
 
-def count(lpad, camp, rpad, distance):
-    padded = lpad + camp + rpad
-    count = 0
-    for i, c in enumerate(camp):
+    def get(i):
+        return segment[i % len(segment)]
+
+    # initialize the window
+    wnd = Counter()
+    for i in range(distance):
+        wnd[get(i)] += 1
+
+    # left
+    lc = 0
+    for k in range(n):
+        for i, c in enumerate(segment):
+            wnd[get(i + distance)] += 1
+            if c.islower():
+                lc += wnd[c.upper()]
+            if i - distance >= -k*len(segment):
+                wnd[get(i - distance)] -= 1
+
+    # middle
+    mc = 0
+    for i, c in enumerate(segment):
+        wnd[get(i + distance)] += 1
         if c.islower():
-            start = max(len(lpad) + i - distance, 0)
-            stop  = min(len(lpad) + i + distance + 1, len(padded))
-            count += padded[start : stop].count(c.upper())
-    return count
+            mc += wnd[c.upper()]
+        wnd[get(i - distance)] -= 1
+
+    # right
+    rc = 0
+    for k in range(n):
+        for i, c in enumerate(segment):
+            if i + distance < (n-k)*len(segment):
+                wnd[get(i + distance)] += 1
+            if c.islower():
+                rc += wnd[c.upper()]
+            wnd[get(i - distance)] -= 1
+
+    return lc + mc*(repeat-2*n) + rc
 
 if __name__ == '__main__':
     main()
