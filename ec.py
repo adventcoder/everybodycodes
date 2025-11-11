@@ -3,20 +3,38 @@ import os
 import re
 import time
 import click
-import inspect
 import functools
 import __main__
 
 event = 2025
+
+def part(n):
+    def decorator(func):
+        func.__part__ = n
+        return func
+    return decorator
 
 def main():
     cli = make_quest_group(__main__)
     cli.main()
 
 def make_quest_group(mod):
-    quest = detect_quest(mod)
-    parts = detect_parts(mod)
-    group = click.Group()
+    quest = get_quest(mod)
+    if quest is None:
+        raise ValueError(f'Could not determine quest number for module: {mod}')
+
+    parts = get_parts(mod)
+    if len(parts) == 0:
+        raise ValueError(f'No parts found in module: {mod}')
+
+    @click.group(invoke_without_command=True)
+    @click.pass_context
+    def group(ctx: click.Context):
+        if ctx.invoked_subcommand is None:
+            for name in group.list_commands(ctx):
+                cmd = group.get_command(ctx, name)
+                ctx.invoke(cmd)
+
     for part, func in parts:
         group.add_command(make_part_command(quest, part, func))
     return group
@@ -35,26 +53,35 @@ def make_part_command(quest, part, func):
         click.echo(f'{part}. {answer} [{format_time(answer_time)}]')
     return new_func
 
-def detect_quest(mod):
-    name, _ = os.path.splitext(os.path.basename(inspect.getfile(mod)))
-    m = re.fullmatch(r'q([0-9]{2})', name)
-    if not m:
-        raise ValueError(f"Could not determine quest number from filename: {mod.__file__}")
-    return int(m.group(1))
+def get_quest(mod):
+    try:
+        return mod.__quest__
+    except AttributeError:
+        name, _ = os.path.splitext(os.path.basename(mod.__file__))
+        if m := re.fullmatch(r'q(\d+)', name):
+            return int(m.group(1))
+        return None
 
-def detect_parts(mod):
+def get_parts(mod):
     parts = []
-    for name, func in inspect.getmembers(mod, inspect.isfunction):
-        if m := re.fullmatch(r'p([0-9]+)', name):
-            part = int(m.group(1))
-            parts.append((part, func))
-    parts.sort(key=lambda pair: pair[0])
+    for attr in dir(mod):
+        val = getattr(mod, attr)
+        if callable(val) and (part := get_part(val)):
+            parts.append((part, val))
     return parts
+
+def get_part(func):
+    try:
+        return func.__part__
+    except AttributeError:
+        if m := re.fullmatch(r'p(\d+)', func.__name__):
+            return int(m.group(1))
+        return None
 
 def get_notes(quest, part, ctx):
     path = f'notes/everybody_codes_e{event}_q{quest:02d}_p{part}.txt'
     if not os.path.exists(path):
-        ctx.fail()
+        ctx.fail(f'Missing notes file: {path}')
     with open(path, 'r') as file:
         return file.read()
 
