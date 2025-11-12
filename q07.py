@@ -1,5 +1,4 @@
 from ec import main
-from functools import cache
 import click
 
 def p1(notes):
@@ -15,21 +14,18 @@ def p2(notes):
 def p3(notes, min_size, max_size):
     prefixes, rules = parse(notes)
 
-    @cache
-    def suffixes(pc, max_size):
-        res = ['']
-        if max_size > 0 and pc in rules:
-            for c in rules[pc]:
-                for s in suffixes(c, max_size - 1):
-                    res.append(c + s)
-        return res
-
     names = set()
-    for p in prefixes:
-        if len(p) <= max_size and check(p, rules):
-            for s in suffixes(p[-1], max_size - len(p)):
-                if len(p) + len(s) >= min_size:
-                    names.add(p + s)
+
+    def gen(name):
+        if len(name) >= min_size:
+            names.add(name)
+        if len(name) < max_size:
+            for c in rules[name[-1]]:
+                gen(name + c)
+
+    for prefix in prefixes:
+        if len(prefix) <= max_size and check(prefix, rules):
+            gen(prefix)
 
     return len(names)
 
