@@ -44,14 +44,14 @@ def make_part_command(quest, part, func):
     @click.option('--notes', 'notes_file', type=click.File('r'))
     @click.pass_context
     @functools.wraps(func)
-    def new_func(ctx, notes_file, **params):
+    def command(ctx, notes_file, **params):
         if notes_file is None:
             notes = get_notes(quest, part, ctx)
         else:
             notes = notes_file.read()
         answer, answer_time = timed(func)(notes, **params)
         click.echo(f'{part}. {answer} [{format_time(answer_time)}]')
-    return new_func
+    return command
 
 def get_quest(mod):
     try:
