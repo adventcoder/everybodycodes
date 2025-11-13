@@ -1,56 +1,42 @@
-import click
 from ec import main
-from collections import defaultdict, Counter
-from itertools import pairwise
+from collections import Counter
+import click
 
 @click.option('--nails', type=int, default='32')
 def p1(notes, nails):
-    return sum(2*abs(b - a) == nails for a, b in pairs(notes))
+    return sum(2*(b-a) == nails for a, b in parse(notes))
 
 @click.option('--nails', type=int, default='256')
 def p2(notes, nails):
-    art = Art(nails)
+    edges = Counter()
     knots = 0
-    for a, b in pairs(notes):
-        knots += art.crossings(a, b)
-        art.add(a, b)
+    for a, b in parse(notes):
+        knots += crossings(edges, a, b, nails)
+        edges[(a, b)] += 1
     return knots
 
 @click.option('--nails', type=int, default='256')
 def p3(notes, nails):
-    art = Art(nails)
-    for a, b in pairs(notes):
-        art.add(a, b)
-    return max(art.crossings(a, b) for a in range(1, nails + 1) for b in range(a + 1, nails + 1))
+    edges = Counter(parse(notes))
+    most_cuts = 0
+    for a in range(1, nails + 1):
+        for b in range(a + 1, nails + 1):
+            cuts = edges[(a, b)] + crossings(edges, a, b, nails)
+            most_cuts = max(cuts, most_cuts)
+    return most_cuts
 
-def pairs(notes):
-    return pairwise(map(int, notes.split(',')))
+def parse(notes):
+    nums = [int(s) for s in notes.split(',')]
+    for i in range(len(nums) - 1):
+        a, b = nums[i : i + 2]
+        yield min(a, b), max(a, b)
 
-class Art:
-    def __init__(self, nails):
-        self.nails = nails
-        self.edges = defaultdict(Counter)
-
-    def add(self, a, b):
-        self.edges[a][b] += 1
-        self.edges[b][a] += 1
-
-    def crossings(self, a, b):
-        count = 0
-        if a in self.edges and b in self.edges[a]:
-            count += self.edges[a][b]
-        ends = set(self.between(b, a))
-        for start in self.between(a, b):
-            for end in self.edges[start]:
-                if end in ends:
-                    count += self.edges[start][end]
-        return count
-
-    def between(self, a, b):
-        a = a % self.nails + 1
-        while a != b:
-            yield a
-            a = a % self.nails + 1
+def crossings(edges, a, b, nails):
+    count = 0
+    for (c, d), n in edges.items():
+        if (a < c < b < d) or (c < a < d < b):
+            count += n
+    return count
 
 if __name__ == '__main__':
     main()
