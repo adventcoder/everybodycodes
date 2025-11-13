@@ -1,20 +1,20 @@
 from ec import main
-from collections import Counter
+from itertools import groupby, islice
 
 def p1(notes):
-    nums = parse(notes)
-    return sum(set(nums))
+    sizes = parse(notes)
+    return sum(size for size, _ in groupby(sizes))
 
 def p2(notes):
-    nums = parse(notes)
-    return sum(sorted(set(nums))[:20])
+    sizes = parse(notes)
+    return sum(size for size, _ in islice(groupby(sizes), 20))
 
 def p3(notes):
-    nums = parse(notes)
-    return max(Counter(nums).values())
+    sizes = parse(notes)
+    return max(len(list(group)) for _, group in groupby(sizes))
 
 def parse(notes):
-    return [int(s) for s in notes.split(',')]
+    return sorted(map(int, notes.split(',')))
 
 if __name__ == '__main__':
     main()
