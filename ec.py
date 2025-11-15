@@ -8,6 +8,8 @@ import __main__
 from functools import wraps
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
+import tempfile
+import json
 
 event = 2025
 
@@ -37,37 +39,18 @@ def make_quest_group(mod):
 
 def make_part_command(quest, part, func):
     @click.command()
-    @pass_notes(quest, part)
+    @click.option('--notes', 'notes_path', type=click.Path(exists=True))
+    @click.option('--session', envvar='EC_SESSION')
     @wraps(func)
-    def command(notes, **params):
+    def command(notes_path, session, **params):
+        if notes_path is not None:
+            with open(notes_path, 'r') as file:
+                notes = file.read()
+        else:
+            notes = get_notes(quest, part, session)
         answer, answer_time = timed(func)(notes, **params)
         click.echo(f'{part}. {answer} [{format_time(answer_time)}]')
     return command
-
-def pass_notes(quest, part):
-    def decorator(func):
-        @click.option('--notes', 'notes_path', type=click.Path(exists=True))
-        @click.option('--session', envvar='EC_SESSION')
-        @click.pass_context
-        @wraps(func)
-        def new_func(ctx: click.Context, notes_path, session, **params):
-            if notes_path is not None:
-                with open(notes_path, 'r') as file:
-                    notes = file.read()
-            else:
-                notes_path = f'notes/everybody_codes_e{event}_q{quest:02d}_p{part}.txt'
-                if os.path.exists(notes_path):
-                    with open(notes_path, 'r') as file:
-                        notes = file.read()
-                else:
-                    if session is None:
-                        ctx.fail('A session is required to download notes automatically.')
-                    notes = fetch_notes(quest, part, session)
-                    with open(notes_path, 'w') as file:
-                        file.write(notes)
-            return func(notes, **params)
-        return new_func
-    return decorator
 
 def get_quest(mod):
     try:
@@ -110,38 +93,55 @@ def format_time(time):
         time *= 1000
     return f"{time:.2f} ns"
 
+def get_notes(quest, part, session):
+    notes_path = f'notes/everybody_codes_e{event}_q{quest:02d}_p{part}.txt'
+    if os.path.exists(notes_path):
+        with open(notes_path, 'r') as file:
+            return file.read()
+    else:
+        notes = fetch_notes(quest, part, session)
+        with open(notes_path, 'w') as file:
+            file.write(notes)
+        return notes
+
 def fetch_notes(quest, part, session):
-    with Client(session) as client:
-        me = client.get_me()
-        notes = client.get_notes(quest, me['seed'])
-        quest = client.get_quest(quest)
-        return decrypt(notes[f'{part}'], quest[f'key{part}'])
+    if session is None:
+        raise click.UsageError('A session is required to download notes automatically.')
 
-class Client:
-    def __init__(self, session):
-        self.session = requests.Session()
-        self.session.cookies.set('everybody-codes', session, domain='everybody.codes')
+    user = api('user/me', session)
+    name = user.get('name')
+    seed = user.get('seed', 0)
+    if name is None:
+        raise click.UsageError('No user logged in.')
 
-    def __enter__(self):
-        return self
+    data = api(f'event/{event}/quest/{quest}', session)
+    key = data.get(f'key{part}')
+    if key is None:
+        raise click.UsageError(f'Part {part} locked for user {name}.')
 
-    def __exit__(self, *args):
-        self.session.close()
+    encrypted_notes = assets(f'{event}/{quest}/input/{seed}.json')
+    return decrypt(encrypted_notes[str(part)], key)
 
-    def get_me(self):
-        res = self.session.get('https://everybody.codes/api/user/me')
-        res.raise_for_status()
-        return res.json()
+def api(path, session):
+    res = requests.get('https://everybody.codes/api/' + path, cookies={ 'everybody-codes': session })
+    res.raise_for_status()
+    return res.json()
 
-    def get_quest(self, quest):
-        res = self.session.get(f'https://everybody.codes/api/event/{event}/quest/{quest}')
-        res.raise_for_status()
-        return res.json()
+def assets(path):
+    cache_file = os.path.join(tempfile.gettempdir(), 'everybody-codes', 'assets', *path.split('/'))
+    if os.path.exists(cache_file):
+        with open(cache_file, 'r') as file:
+            return json.load(file)
 
-    def get_notes(self, quest, seed):
-        res = self.session.get(f'https://everybody-codes.b-cdn.net/assets/{event}/{quest}/input/{seed}.json')
-        res.raise_for_status()
-        return res.json()
+    res = requests.get('https://everybody-codes.b-cdn.net/assets/' + path)
+    res.raise_for_status()
+    data = res.json()
+
+    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+    with open(cache_file, 'w') as file:
+        json.dump(data, file)
+
+    return data
 
 def decrypt(encrypted, key):
     iv = key[:16].encode('utf-8')

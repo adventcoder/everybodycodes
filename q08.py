@@ -23,7 +23,7 @@ def p2(notes, nails, image_path, image_size):
         art.add(a, b)
 
     if image_path is not None:
-        art.save_image(image_size, image_size, image_path)
+        art.save_image(image_size, image_path)
 
     return knots
 
@@ -36,7 +36,7 @@ def p3(notes, nails, image_path, image_size):
         art.add(a, b)
 
     if image_path is not None:
-        art.save_image(image_size, image_size, image_path)
+        art.save_image(image_size, image_path)
 
     most_cuts = 0
     for a, b in combinations(range(1, nails + 1), 2):
@@ -62,26 +62,27 @@ class StringArt:
                 count += n
         return count
 
-    def save_image(self, w, h, path):
-        img = Image.new('RGB', (w, h), 'white')
+    def save_image(self, size, path):
+        img = Image.new('RGB', (size, size), 'white')
         draw = ImageDraw.Draw(img)
 
         stroke = 10
         pad = stroke / 2
-        draw.ellipse((pad, pad, w - pad, h - pad), outline='red', width=stroke)
+        draw.ellipse((pad, pad, size - pad, size - pad), outline='red', width=stroke)
 
         angle = 2*math.pi / self.nails
-        ox, oy = w/2, h/2
-        xs = [ox + (ox - stroke)*math.cos(angle*i) for i in range(self.nails)]
-        ys = [oy + (oy - stroke)*math.sin(angle*i) for i in range(self.nails)]
+        radius = size/2 - stroke
+        xs = [size/2 + radius*math.cos(angle*i) for i in range(self.nails)]
+        ys = [size/2 + radius*math.sin(angle*i) for i in range(self.nails)]
 
         for a, b in self.edges:
             i = (a - 1) % self.nails
             j = (b - 1) % self.nails
-            draw.line((xs[i], ys[i], xs[j], ys[j]), fill='blue', width=1)
+            draw.line((xs[i], ys[i], xs[j], ys[j]), fill='blue')
 
         for i in range(self.nails):
             draw.ellipse((xs[i] - stroke, ys[i] - stroke, xs[i] + stroke, ys[i] + stroke), fill='red')
+            draw.ellipse((xs[i] - pad, ys[i] - pad, xs[i] + pad, ys[i] + pad), fill='white')
 
         img.save(path)
 
